@@ -42,7 +42,7 @@ contract StakingContract is Ownable, ReentrancyGuard, Pausable {
         User[] userSixMonthPlans;
         User[] userOneYearPlans;
     }
-    Stakeholder[] stakeholders;
+    Stakeholder[] stakeholders;////first element of this list is zero or empty
     mapping(address => uint256) stakeholderToIndex;
 
     constructor(address _address) {
