@@ -17,23 +17,31 @@ interface IERC20 {
         returns (bool);
 
     function balanceOf(address account) external view returns (uint256);
+
+function approve(address recipient, uint amount) external returns(bool);
+
 }
 
 contract StakingContract is Ownable, ReentrancyGuard, Pausable {
-    uint256 maxAmount = 100000 * 10**18;
-    uint256 minAmount = 100 * 10**18;
+    uint256 public maxAmount = 100000 * 10**18;
+    uint256 public minAmount = 100 * 10**18;
+    uint public totalReward;
     IERC20 public token;
     uint256 public totalStakers;
     uint256 public totalStakeAmount;
 
     struct User {
         uint256 amount;
-        uint256 claimed;
+        uint256 reward;
         uint256 id;
         uint256 interestRate;
         uint256 startTime;
         uint256 duration;
         bool active;
+    }
+
+    struct UserInfo{ 
+        User[] usersDetails;
     }
 
     struct Stakeholder {
@@ -42,12 +50,15 @@ contract StakingContract is Ownable, ReentrancyGuard, Pausable {
         User[] userSixMonthPlans;
         User[] userOneYearPlans;
     }
-    Stakeholder[] stakeholders;////first element of this list is zero or empty
+
+    UserInfo private userInfos;
+    Stakeholder[] stakeholders; //first element of this list is zero or empty to avoid confusion 
     mapping(address => uint256) stakeholderToIndex;
+    
 
     constructor(address _address) {
         token = IERC20(_address);
-        // push an empty struct to stakeholder array to avoid confusion during checking whether stakeholder does not exist or his index is zero. 
+        // push an empty struct to stakeholders array to avoid confusion during checking whether stakeholder does not exist or his index is zero. 
         // no stakeholder will have 0 index now.
         stakeholders.push();
     }
@@ -83,12 +94,13 @@ contract StakingContract is Ownable, ReentrancyGuard, Pausable {
             userLength < 5,
             "You have reached the maximum limit to stake for this plan"
         );
-
+        
         token.transferFrom(msg.sender, address(this), amount);
+        uint256 reward = calculateReward(amount,interest, month);
 
         User memory newUser = User(
             amount,
-            0,
+            reward,
             userLength,
             interest,
             block.timestamp,
@@ -103,9 +115,9 @@ contract StakingContract is Ownable, ReentrancyGuard, Pausable {
         } else if (month == 12) {
             stakeholder.userOneYearPlans.push(newUser);
         }
+        userInfos.usersDetails.push(newUser);
         totalStakers += 1;
-        totalStakeAmount += 1;
-
+        totalStakeAmount += amount;
         return true;
     }
 
@@ -131,12 +143,11 @@ contract StakingContract is Ownable, ReentrancyGuard, Pausable {
         uint256 endTimeStamp = (user.duration * secondInMonth) + user.startTime;
         require(block.timestamp > endTimeStamp, "plan is still active");
         require(user.active == true, "you have already unstaked");
-        uint256 reward = calculateReward(user.amount, user.interestRate, month);
-        token.transfer(msg.sender, user.amount + reward);
-        user.claimed = reward;
+        token.transfer(msg.sender, user.amount + user.reward);
+        totalReward+=user.reward;
         user.active = false;
         totalStakers -= 1;
-        totalStakeAmount -= 1;
+        totalStakeAmount -= user.amount;
         return true;
     }
 
@@ -181,13 +192,18 @@ contract StakingContract is Ownable, ReentrancyGuard, Pausable {
         return stakeholders[stakeholderToIndex[msg.sender]];
         
     }
-
+        //add a new stakeholder to the stakeholders array
     function addStakeholder(address _address) internal returns (uint256) {
-        stakeholders.push();
+        stakeholders.push(); 
         uint256 index = stakeholders.length - 1;
         stakeholderToIndex[_address] = index;
         return index;
     }
+
+    function getAllUsersInfo() external view returns(UserInfo memory){
+        return userInfos;
+    }
 }
 
 
+//1010000000000000000
