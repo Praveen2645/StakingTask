@@ -31,6 +31,7 @@ contract StakingContract is Ownable, ReentrancyGuard, Pausable {
     uint256 public totalStakeAmount;
 
     struct User {
+        address stakeHolder;
         uint256 amount;
         uint256 reward;
         uint256 id;
@@ -74,7 +75,9 @@ contract StakingContract is Ownable, ReentrancyGuard, Pausable {
         uint256 userLength;
         uint256 interest;
         uint256 index = stakeholderToIndex[msg.sender];
+        
         if (index == 0) {
+            totalStakers +=1;
             index = addStakeholder(msg.sender);
         }
         if (month == 3) {
@@ -97,8 +100,8 @@ contract StakingContract is Ownable, ReentrancyGuard, Pausable {
         
         token.transferFrom(msg.sender, address(this), amount);
         uint256 reward = calculateReward(amount,interest, month);
-
         User memory newUser = User(
+            msg.sender,
             amount,
             reward,
             userLength,
@@ -116,7 +119,6 @@ contract StakingContract is Ownable, ReentrancyGuard, Pausable {
             stakeholder.userOneYearPlans.push(newUser);
         }
         userInfos.usersDetails.push(newUser);
-        totalStakers += 1;
         totalStakeAmount += amount;
         return true;
     }
@@ -205,5 +207,3 @@ contract StakingContract is Ownable, ReentrancyGuard, Pausable {
     }
 }
 
-
-//1010000000000000000
